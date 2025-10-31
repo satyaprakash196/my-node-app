@@ -5,7 +5,7 @@ const PORT = 3000;
 const server = http.createServer((req, res) => {
   res.statusCode = 200;
   res.setHeader('Content-Type', 'text/plain');
-  res.end('Hello from Dockerized Node.js app-ci-cd-satya-push docker image docker hub-triger webhook-master-slave-with sonarq!\n');
+  res.end('Hello from Dockerized Node.js app-ci-cd-satya!\n');
 });
 
 server.listen(PORT, () => {
