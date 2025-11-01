@@ -1,0 +1,73 @@
+pipeline {
+    agent {label 'vinod'}
+
+    environment {
+    // Replace this with your Docker Hub credentials ID in Jenkins
+    DOCKERHUB_CREDENTIALS = credentials('jenkins-dockerhub')
+    IMAGE_NAME = 'satya037/my-node-app'
+    IMAGE_TAG = "build-${BUILD_NUMBER}"
+    SONARQUBE = 'sonarqube-server'
+}
+
+stages {
+    stage('Checkout Code') {
+        steps {
+            echo 'Checking out source code...'
+            git branch: 'main', url: 'https://github.com/satyaprakash196/my-node-app.git'
+        }
+    }
+    stage('SonarQube Analysis') {
+        steps {
+            echo 'Running SonarQube analysis...'
+            withSonarQubeEnv("${SONARQUBE}") {
+                script {
+                    // If you installed Sonar Scanner under "Global Tool Configuration"
+                    def scannerHome = tool 'sonarqube-scanner' // change to your configured scanner name
+                    sh """
+                        ${scannerHome}/bin/sonar-scanner \
+                        -Dsonar.projectKey=my-node-app \
+                        -Dsonar.projectName=my-node-app \
+                        -Dsonar.sources=. \
+                        -Dsonar.host.url=http://65.1.131.34:9000 \
+                        -Dsonar.login=sqa_c34b1aeb69ee50bb4e267f4a42518b2c1c7305f2
+                    """
+                }
+            }
+        }
+    }
+
+    stage('Build Docker Image') {
+        steps {
+            echo "Building Docker image: ${IMAGE_NAME}:${IMAGE_TAG}"
+            sh 'docker build -t ${IMAGE_NAME}:${IMAGE_TAG} .'
+        }
+    }
+
+    stage('Login to Docker Hub') {
+        steps {
+            echo 'Logging in to Docker Hub...'
+            sh 'echo $DOCKERHUB_CREDENTIALS_PSW | docker login -u $DOCKERHUB_CREDENTIALS_USR --password-stdin'
+        }
+    }
+
+    stage('Push Docker Image') {
+        steps {
+            echo "Pushing Docker image: ${IMAGE_NAME}:${IMAGE_TAG}"
+            sh 'docker push ${IMAGE_NAME}:${IMAGE_TAG}'
+        }
+    }
+
+    stage('Deploy Container') {
+        steps {
+            echo 'Deploying Docker container...'
+            sh '''
+                docker rm -f my-node-app || true
+                docker pull ${IMAGE_NAME}:${IMAGE_TAG}
+                docker run -d --name my-node-app -p 3000:3000 ${IMAGE_NAME}:${IMAGE_TAG}
+            '''
+        }
+    }
+}
+}
+
+
